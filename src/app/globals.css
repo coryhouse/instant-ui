@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f7f8;
+  --surface: #ffffff;
+  --foreground: #16161a;
+  --muted: #6b6b76;
+  --border: #e3e3e8;
+  --accent: #5b4bff;
+  --success: #0f9d58;
+  --warning: #b7791f;
+  --danger: #d93025;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0d0d10;
+    --surface: #17171c;
+    --foreground: #ececf1;
+    --muted: #9a9aa6;
+    --border: #2a2a33;
+    --accent: #8b7dff;
+    --success: #34c77b;
+    --warning: #e0a83a;
+    --danger: #ff6b5e;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.skeleton {
+  @apply animate-pulse rounded bg-muted/20;
+}
