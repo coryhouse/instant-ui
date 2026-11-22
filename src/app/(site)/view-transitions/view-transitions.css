@@ -1,0 +1,99 @@
+/*
+ * View transition animations for the /view-transitions demo only.
+ * Class names are prefixed with vt- so they can't collide with other demos.
+ * Imported by the demo's pages (not globals.css).
+ */
+
+/* Clicks pass through the transition overlay to the live page. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* Shared-element morph: thumbnail ⇄ hero. */
+::view-transition-group(.vt-morph) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+::view-transition-image-pair(.vt-morph) {
+  animation-name: vt-via-blur;
+}
+@keyframes vt-via-blur {
+  30% {
+    filter: blur(3px);
+  }
+}
+
+/* Suspense reveal / detail text: old leaves fast, new arrives gently. */
+::view-transition-old(.vt-slide-down) {
+  animation:
+    150ms ease-out both vt-fade reverse,
+    150ms ease-out both vt-slide-y reverse;
+}
+::view-transition-new(.vt-slide-up) {
+  animation:
+    210ms ease-in 150ms both vt-fade,
+    400ms ease-in both vt-slide-y;
+}
+
+/* Directional navigation. */
+::view-transition-old(.vt-nav-forward) {
+  --vt-offset: -60px;
+  animation:
+    150ms ease-in both vt-fade reverse,
+    400ms ease-in-out both vt-slide-x reverse;
+}
+::view-transition-new(.vt-nav-forward) {
+  --vt-offset: 60px;
+  animation:
+    210ms ease-out 150ms both vt-fade,
+    400ms ease-in-out both vt-slide-x;
+}
+::view-transition-old(.vt-nav-back) {
+  --vt-offset: 60px;
+  animation:
+    150ms ease-in both vt-fade reverse,
+    400ms ease-in-out both vt-slide-x reverse;
+}
+::view-transition-new(.vt-nav-back) {
+  --vt-offset: -60px;
+  animation:
+    210ms ease-out 150ms both vt-fade,
+    400ms ease-in-out both vt-slide-x;
+}
+
+@keyframes vt-fade {
+  from {
+    filter: blur(3px);
+    opacity: 0;
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+@keyframes vt-slide-y {
+  from {
+    transform: translateY(10px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes vt-slide-x {
+  from {
+    translate: var(--vt-offset);
+  }
+  to {
+    translate: 0;
+  }
+}
+
+/* Respect the user's motion preference: swap instantly, no movement. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
