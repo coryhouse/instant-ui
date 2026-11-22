@@ -111,3 +111,11 @@ html.dark {
 /* Denser tables (e.g. the closing decision matrix) */
 .compact-table table { font-size: 1.15rem; }
 .compact-table th, .compact-table td { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+
+/* Hand-drawn request timeline (streaming slide) */
+.timeline { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; font-size: 0.85rem; }
+.tl-row { display: grid; grid-template-columns: 5rem 1fr; align-items: center; gap: 0.75rem; }
+.tl-label { text-align: right; font-family: var(--slidev-code-font-family, monospace); opacity: 0.8; }
+.tl-track { position: relative; height: 1.4rem; border-radius: 4px; background: rgba(127,127,127,0.12); }
+.tl-bar { position: absolute; top: 0; bottom: 0; width: 33.3333%; border-radius: 4px; background: #6366f1; }
+.tl-axis { display: flex; justify-content: space-between; font-size: 0.7rem; opacity: 0.6; }

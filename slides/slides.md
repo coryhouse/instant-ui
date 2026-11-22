@@ -287,30 +287,24 @@ DEMO CUE: latency 2000ms, "Reload both". Naive: blank until everything arrives (
 
 **Naive:** sequential awaits
 
-```mermaid {scale: 0.7}
-gantt
-  dateFormat X
-  axisFormat %s
-  section Request
-  product   :0, 1
-  reviews   :1, 2
-  recs      :2, 3
-```
+<div class="timeline">
+  <div class="tl-row"><span class="tl-label">product</span><div class="tl-track"><div class="tl-bar" style="left:0.0000%"></div></div></div>
+  <div class="tl-row"><span class="tl-label">reviews</span><div class="tl-track"><div class="tl-bar" style="left:33.3333%"></div></div></div>
+  <div class="tl-row"><span class="tl-label">recs</span><div class="tl-track"><div class="tl-bar" style="left:66.6667%"></div></div></div>
+  <div class="tl-row"><span class="tl-label"></span><div class="tl-axis"><span>0s</span><span>1s</span><span>2s</span><span>3s</span></div></div>
+</div>
 
 </div>
 <div v-click>
 
 **Instant:** parallel + stream
 
-```mermaid {scale: 0.7}
-gantt
-  dateFormat X
-  axisFormat %s
-  section Request
-  product   :0, 1
-  reviews   :0, 1
-  recs      :0, 1
-```
+<div class="timeline">
+  <div class="tl-row"><span class="tl-label">product</span><div class="tl-track"><div class="tl-bar" style="left:0.0000%"></div></div></div>
+  <div class="tl-row"><span class="tl-label">reviews</span><div class="tl-track"><div class="tl-bar" style="left:0.0000%"></div></div></div>
+  <div class="tl-row"><span class="tl-label">recs</span><div class="tl-track"><div class="tl-bar" style="left:0.0000%"></div></div></div>
+  <div class="tl-row"><span class="tl-label"></span><div class="tl-axis"><span>0s</span><span>1s</span><span>2s</span><span>3s</span></div></div>
+</div>
 
 </div>
 </div>
