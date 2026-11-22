@@ -9,7 +9,11 @@
     "lint": "eslint",
     "slides": "pnpm --dir slides dev",
     "slides:build": "pnpm --dir slides build",
-    "slides:export": "pnpm --dir slides export"
+    "slides:export": "pnpm --dir slides export",
+    "zero:up": "docker compose up -d --wait",
+    "zero:cache": "node --env-file=zero/zero.env node_modules/@rocicorp/zero/out/zero/src/zero-cache-dev.js",
+    "zero:down": "docker compose down",
+    "zero:reset": "docker compose down -v && rm -f /tmp/instant-ui-zero-replica.db*"
   },
   "dependencies": {
     "@rocicorp/zero": "^1.12.0",

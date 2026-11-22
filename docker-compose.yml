@@ -1,0 +1,26 @@
+# Local Postgres for the Zero sync engine demo (/sync/zero). Runs fully offline.
+#   pnpm zero:up    -> start Postgres (port 5434)
+#   pnpm zero:cache -> start zero-cache (port 4848), replicating from it
+#   pnpm zero:down  -> stop Postgres (data is kept in the named volume)
+services:
+  zero-postgres:
+    image: postgres:16.2-alpine
+    # Zero replicates via logical replication, so WAL must be "logical".
+    command: ["postgres", "-c", "wal_level=logical"]
+    environment:
+      POSTGRES_USER: zero
+      POSTGRES_PASSWORD: zero
+      POSTGRES_DB: zero
+    ports:
+      - "5434:5432"
+    volumes:
+      - zero-pgdata:/var/lib/postgresql/data
+      - ./zero/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zero -d zero"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  zero-pgdata:
