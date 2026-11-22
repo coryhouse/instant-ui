@@ -31,7 +31,7 @@ export function PerfMeter({ show }: { show: Metric[] }) {
           add.js += size;
           add.jsWire += e.encodedBodySize;
           add.jsCount++;
-        } else if (e.initiatorType === "img" || /\.(png|jpe?g|webp|avif)$/.test(path) || path.startsWith("/_next/image")) {
+        } else if (e.initiatorType === "img" || /\.(png|jpe?g|webp|avif)$/.test(path) || path.startsWith("/_next/image") || path.startsWith("/api/images/")) {
           add.img += e.encodedBodySize || e.decodedBodySize;
           add.imgCount++;
         }
@@ -53,18 +53,29 @@ export function PerfMeter({ show }: { show: Metric[] }) {
       if (last) setS((p) => ({ ...p, lcp: (lcp = Math.round(last.startTime)) }));
     });
 
-    // LCP is final once the page has loaded; report it to the FrameCompare badge.
-    const report = () => setTimeout(() => {
-      if (lcp === null) return;
-      const m = { type: "instant-ui:mark", name: "lcp", at: lcp };
-      const w = window as typeof window & { __marks?: unknown[] };
-      (w.__marks ??= []).push(m);
-      window.parent?.postMessage(m, "*");
-    }, 100);
+    // LCP is final once the page has loaded and the images in view have finished;
+    // then report it to the FrameCompare badge.
+    let timer: ReturnType<typeof setTimeout>;
+    const report = () => {
+      const pending = [...document.images].some((img) => !img.complete && img.getBoundingClientRect().top < innerHeight);
+      if (pending || lcp === null) {
+        timer = setTimeout(report, 100);
+        return;
+      }
+      timer = setTimeout(() => {
+        const m = { type: "instant-ui:mark", name: "lcp", at: lcp };
+        const w = window as typeof window & { __marks?: unknown[] };
+        (w.__marks ??= []).push(m);
+        window.parent?.postMessage(m, "*");
+      }, 200);
+    };
     if (document.readyState === "complete") report();
     else window.addEventListener("load", report, { once: true });
 
-    return () => observers.forEach((o) => o.disconnect());
+    return () => {
+      clearTimeout(timer);
+      observers.forEach((o) => o.disconnect());
+    };
   }, []);
 
   const cards: Record<Metric, { label: string; value: string; sub?: string; bad: boolean | null }> = {
