@@ -29,7 +29,7 @@ class: text-left
 
 <!--
 Welcome. Hour-long tour of 19 techniques, each with a live side-by-side demo: naive on the left, instant on the right.
-Before starting: `pnpm dev` running on :3000, latency slider at default (1000ms), fail-writes OFF, Zero docker running if you'll show demo 14.
+Before starting: present from Chrome (not an embedded webview). `pnpm dev` running on :3000 (or `pnpm build && pnpm start` for prefetch/static numbers), latency slider at 1000ms, "Fail 50% of writes" OFF. For demo 14: `pnpm zero:up` and `pnpm zero:cache` already running.
 -->
 
 ---
@@ -90,7 +90,7 @@ The **Doherty threshold**: when a system responds in under 400ms, productivity s
 
 <!--
 IBM found that when response time dropped under ~400ms, people worked dramatically faster. Not linearly faster: they stayed engaged.
-Takeaway: the target is not "fast enough to finish", it's "fast enough that nobody waits".
+The target is not "fast enough to finish", it's "fast enough that nobody waits".
 -->
 
 ---
@@ -110,9 +110,9 @@ Measured at the **75th percentile** of real users. Google uses them for ranking.
 </div>
 
 <!--
-Three numbers that map to: does it load, does it respond, does it stay put.
-INP replaced FID in 2024; it measures every interaction, not just the first, so main-thread work matters all session long.
-p75 of real users: your M3 MacBook on office wifi is not the p75.
+Three numbers: does it load, does it respond, does it stay put.
+INP replaced FID in 2024; it measures every interaction, so main-thread work matters all session long.
+p75 of real users: your M-series MacBook on office wifi is not the p75.
 -->
 
 ---
@@ -122,13 +122,13 @@ p75 of real users: your M3 MacBook on office wifi is not the p75.
 <div class="grid grid-cols-2 gap-6 mt-10">
   <div v-click class="box accent"><div class="text-3xl font-bold">Do less</div><div class="small mt-2">ship less code, render fewer nodes, skip repeated work</div></div>
   <div v-click class="box accent"><div class="text-3xl font-bold">Do it earlier</div><div class="small mt-2">build time, prefetch, cache, before the click</div></div>
-  <div v-click class="box accent"><div class="text-3xl font-bold">Do it elsewhere</div><div class="small mt-2">CDN, server, service worker, web worker, local DB</div></div>
+  <div v-click class="box accent"><div class="text-3xl font-bold">Do it elsewhere</div><div class="small mt-2">CDN, service worker, web worker, local DB</div></div>
   <div v-click class="box accent"><div class="text-3xl font-bold">Hide the wait</div><div class="small mt-2">stream, skeletons, optimistic UI, transitions</div></div>
 </div>
 
 <!--
-This is the mental model for the whole talk. When you see a technique, ask: which of the four is it?
-Most of the best ones combine two. Optimistic UI = hide the wait + do it elsewhere (later).
+The mental model for the whole talk. For each technique, ask: which of the four is it?
+The best ones combine two. Optimistic UI = hide the wait + do it later, elsewhere.
 -->
 
 ---
@@ -147,7 +147,7 @@ Most of the best ones combine two. Optimistic UI = hide the wait + do it elsewhe
 </div>
 
 <!--
-Roughly in the order a request flows: server rendering, then what we ship, then caching, then mutations, then the main thread, then perception.
+Roughly in the order a request flows: server rendering, what we ship, caching, mutations, the main thread, perception.
 -->
 
 ---
@@ -158,16 +158,16 @@ Roughly in the order a request flows: server rendering, then what we ship, then 
 
 - Every demo: **Naive** on the left, **Instant** on the right
 - **Latency slider** in the header: simulated server delay (default 1000ms)
-- **Fail 50% of writes** toggle: test rollbacks and retries
+- **Fail 50% of writes**: test rollbacks
 - Timing badges show *time to feedback*, not just time to done
-- Page-load demos: **Reload both** reloads two iframes at once
+- Page-load demos: **Reload both** reloads two iframes at the same moment
 
 </v-clicks>
 
 <div v-click class="mt-8"><DemoLink slug="" /></div>
 
 <!--
-Show the home page quickly. Point out the latency slider and fail toggle in the header.
+DEMO CUE: show the home page. Point out the latency slider and the fail toggle in the header.
 Everything runs locally and offline. The latency is fake but realistic: it's what your p75 mobile user lives with.
 -->
 
@@ -180,57 +180,51 @@ layout: section
 <div class="muted">Static · Partial prerendering · Streaming</div>
 
 <!--
-First section: what happens on the server before the first byte, and how to start sending bytes sooner.
+What happens on the server before the first byte, and how to start sending bytes sooner.
 -->
 
 ---
 
 # Static rendering
 
-**Problem:** rendering the same HTML for every request. Every user pays for server work and DB calls.
+<DemoLink slug="static" :n="1" corner />
 
-```tsx {1|3-6|8-10|all}
-import { cacheLife } from "next/cache";
+<div class="grid grid-cols-2 gap-6 code-sm">
+<div>
+<div class="label-bad">Naive: render per request</div>
 
-export default async function Pricing() {
-  "use cache";            // render once, reuse for everyone
-  cacheLife("hours");     // ...and refresh in the background
-  const plans = await getPlans();
-
-  return <PlanTable plans={plans} />;
+```tsx
+export default async function Page() {
+  await connection();   // opt in to per-request
+  const products = await getProducts();
+  return <ProductGrid products={products} />;
 }
-// Built at `next build` → served as a file from the CDN
 ```
 
-<!--
-Do it earlier: at build time. With Cache Components, "use cache" makes the output static; uncached data makes it dynamic.
-cacheLife decides how stale it can get. The fastest server is no server.
--->
-
----
-
-# Demo: static rendering
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="static" :n="1" />
-  <div class="small mt-6 muted">Dynamic SSR vs prerendered, side by side.</div>
 </div>
-<div class="not-for">
+<div v-click>
+<div class="label-good">Instant: render once</div>
 
-**When not to**
-
-- Per-user content (cart, dashboard)
-- Data that must be fresh to the second
-- Huge page counts: generate on demand instead
+```tsx
+export default async function Page() {
+  "use cache";
+  cacheLife("days");
+  const products = await getProducts();
+  return <ProductGrid products={products} />;
+}
+```
 
 </div>
 </div>
+
+<div v-click class="mt-6">Prerendered at build → served as a file from the CDN. <b>The fastest server is no server.</b></div>
+
+<div v-click class="not-for mt-6 small"><b>Not for:</b> per-user content, data that must be fresh to the second.</div>
 
 <!--
-DEMO CUE: set latency to 2000ms, click "Reload both".
-Point at "Rendered at": the static page doesn't change, the dynamic one does every reload.
-Note: dev mode renders everything on demand; for real numbers run `pnpm build && pnpm start`.
+Do it earlier: at build time. With Cache Components, "use cache" makes the output static; awaiting connection() (or uncached data) makes it dynamic. cacheLife sets how stale it may get.
+DEMO CUE: set latency to 2000ms, click "Reload both". Point at "Rendered at": the prerendered page doesn't change, the dynamic page does every reload.
+Dev renders everything on demand; for real numbers use `pnpm build && pnpm start`.
 -->
 
 ---
@@ -240,69 +234,48 @@ Note: dev mode renders everything on demand; for real numbers run `pnpm build &&
 **Problem:** one personalized widget makes the *whole page* dynamic.
 
 <div class="grid grid-cols-3 gap-4 mt-10 text-center">
-  <div class="box good col-span-3">Header · nav · layout <span class="small muted">(static shell, from CDN)</span></div>
-  <div class="box good">Product info</div>
-  <div class="box bad" v-click>Cart count<br/><span class="small">streams in</span></div>
-  <div class="box bad" v-click>Recommendations<br/><span class="small">streams in</span></div>
+  <div class="box good col-span-3">Header · product info <span class="small muted">(static shell, sent immediately)</span></div>
+  <div class="box bad" v-click>Cart count<br/><span class="small">cookie → streams in</span></div>
+  <div class="box bad" v-click>Live stock<br/><span class="small">per request → streams in</span></div>
+  <div class="box bad" v-click>Recommendations<br/><span class="small">personal → streams in</span></div>
 </div>
 
 <div v-click class="mt-10 text-center">The shell ships <b>instantly</b>. Dynamic holes stream into the same response.</div>
 
 <!--
 PPR = static and dynamic in one route. The prerendered shell goes out immediately, Suspense boundaries mark the holes, and the server fills them in over the same HTTP response.
-In Next 16 with cacheComponents, this is just the default model.
+In Next 16 with cacheComponents this is the default model.
 -->
 
 ---
 
 # PPR: the code is just Suspense
 
-```tsx {3-4|5-7|8-10|all}
-export default function ProductPage() {
-  return (
-    <>
-      <ProductInfo />                {/* "use cache" → in the shell */}
-      <Suspense fallback={<CartSkeleton />}>
-        <CartCount />                {/* reads cookies → dynamic hole */}
-      </Suspense>
-      <Suspense fallback={<RecsSkeleton />}>
-        <Recommendations />          {/* uncached fetch → dynamic hole */}
-      </Suspense>
-    </>
-  );
+<DemoLink slug="ppr" :n="2" corner />
+
+```tsx {2-3|4-9|12-16|all}
+export default function Page() {
+  return (<>
+    <StoreHeader cart={<Suspense fallback={<Dot />}><Cart /></Suspense>} />
+    <CachedProductInfo />
+    <Suspense fallback={<LiveStockSkeleton />}><Stock /></Suspense>
+    <Suspense fallback={<RecsSkeleton />}><PersonalRecs /></Suspense>
+  </>);
+}
+
+// Static: same for everyone → prerendered into the shell
+async function CachedProductInfo() {
+  "use cache";
+  cacheLife("hours");
+  return <ProductInfo product={await getProduct(PRODUCT_ID)} />;
 }
 ```
 
-<div v-click class="mt-6 small">The <code>&lt;Suspense&gt;</code> boundary <i>is</i> the line between static and dynamic.</div>
+<div v-click class="not-for mt-4 small"><b>Watch out:</b> skeletons that shift layout (CLS), too many tiny holes = popcorn UI.</div>
 
 <!--
-No special API. The Suspense boundary decides where the static shell ends.
-Anything cached or pure goes in the shell; anything that touches cookies, headers, or uncached data becomes a hole.
--->
-
----
-
-# Demo: partial prerendering
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="ppr" :n="2" />
-  <div class="small mt-6 muted">Fully dynamic page vs static shell + streamed holes.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- Skeletons that shift layout (CLS!)
-- Too many tiny holes = popcorn UI
-- Shell must be meaningful, not just a spinner
-
-</div>
-</div>
-
-<!--
-DEMO CUE: latency 2000ms, "Reload both". Compare the "shell" mark: instant shows the shell right away, naive shows nothing until everything is done.
-Then compare "content": roughly the same. Same total work, much better perceived speed.
+No special API. The Suspense boundary is the line between static and dynamic. Cart reads cookies(), stock calls connection(): those become holes.
+DEMO CUE: latency 2000ms, "Reload both". Naive: blank until everything arrives (~3s). Instant: header + product immediately, then stock, then recs. The instant "shell" badge doesn't depend on latency at all.
 -->
 
 ---
@@ -322,7 +295,6 @@ gantt
   product   :0, 1
   reviews   :1, 2
   recs      :2, 3
-  render    :3, 4
 ```
 
 </div>
@@ -335,7 +307,6 @@ gantt
   dateFormat X
   axisFormat %s
   section Request
-  shell     :0, 1
   product   :0, 1
   reviews   :0, 1
   recs      :0, 1
@@ -343,6 +314,8 @@ gantt
 
 </div>
 </div>
+
+<div v-click class="mt-4 text-center">Total time: <b class="bad">sum</b> of queries → <b class="good">slowest</b> query</div>
 
 <!--
 Waterfalls are the #1 server-side perf bug I see. Each await waits for the previous one even when they're independent.
@@ -353,55 +326,53 @@ Fix: start everything at once, and stream each piece as it resolves.
 
 # Streaming: the code
 
-```tsx {1-6|8-16|all}
-// Naive: waterfall: 3 round trips, nothing shows until all finish
-async function Page({ id }) {
-  const product = await getProduct(id);
-  const reviews = await getReviews(id);
-  const recs = await getRecommendations(id);
-  return <Layout product={product} reviews={reviews} recs={recs} />;
-}
+<DemoLink slug="streaming" :n="3" corner />
 
-// Instant: parallel + streamed: each section reveals when ready
-function Page({ id }) {
-  return (
-    <Layout>
-      <Suspense fallback={<Skel />}><Product id={id} /></Suspense>
-      <Suspense fallback={<Skel />}><Reviews id={id} /></Suspense>
-      <Suspense fallback={<Skel />}><Recs id={id} /></Suspense>
-    </Layout>
-  );
+<div class="grid grid-cols-2 gap-6 code-sm">
+<div>
+<div class="label-bad">Naive: waterfall</div>
+
+```tsx
+// total = product + reviews + recs
+export default async function Page() {
+  const product = await fetchProduct();
+  const reviews = await fetchReviews();
+  const recs = await fetchRecs();
+  return (<>
+    <ProductSection product={product} />
+    <ReviewsSection reviews={reviews} />
+    <RecsSection products={recs} />
+  </>);
 }
 ```
 
+</div>
+<div v-click>
+<div class="label-good">Instant: parallel + Suspense</div>
+
+```tsx
+// total = slowest; each pops in when ready
+export default function Page() {
+  const product = fetchProduct();   // no await
+  const reviews = fetchReviews();
+  const recs = fetchRecs();
+  return (<>
+    <Suspense fallback={<ProductSkeleton />}>
+      <Product data={product} />
+    </Suspense>
+    {/* … reviews, recs the same */}
+  </>);
+}
+```
+
+</div>
+</div>
+
+<div v-click class="not-for mt-4 small"><b>Watch out:</b> a fetching parent above nested Suspense re-creates the waterfall. Status code is sent before holes resolve.</div>
+
 <!--
-Each child component fetches its own data. Siblings under separate Suspense boundaries render in parallel.
-If you need all the data in one place, `Promise.all` at least removes the waterfall.
--->
-
----
-
-# Demo: streaming & Suspense
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="streaming" :n="3" />
-  <div class="small mt-6 muted">Sequential awaits vs parallel Suspense boundaries.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- Nested Suspense inside a fetching parent re-creates the waterfall
-- Reveal order: use `<SuspenseList>`-style grouping or coarser boundaries
-- Status code is sent before holes resolve
-
-</div>
-</div>
-
-<!--
-DEMO CUE: latency 1000ms. Reload both. Naive: ~3s blank, then everything. Instant: shell immediately, sections pop in at ~1s.
-Point out total time drops from 3x latency to 1x latency.
+Start the promises at the top without awaiting, pass them down, await inside each Suspense boundary.
+DEMO CUE: latency 2000ms, "Reload both". Naive: one spinner (loading.tsx), then everything at ~3x latency. Instant: skeletons, each section pops in on its own. Compare the recs badges. Drag the latency slider to update the expected timeline below.
 -->
 
 ---
@@ -413,158 +384,94 @@ layout: section
 <div class="muted">Lazy loading · Images · Prefetch</div>
 
 <!--
-Now the client side. The bytes you send, and when you send them.
+Now the client side: the bytes you send, and when you send them.
 -->
 
 ---
 
 # Lazy loading
 
-**Problem:** the chart library, the rich text editor, the admin modal: all in the first bundle, for every user.
+<DemoLink slug="lazy" :n="4" corner />
 
-```tsx {1-4|6-11|all}
-// Split it out: downloaded only when rendered
-const Chart = dynamic(() => import("./Chart"), {
-  loading: () => <ChartSkeleton />,
+**Problem:** the editor and its 1 MB dictionary ship to everyone, up front.
+
+```tsx {1-5|8-10|all}
+const loadEditor = () => import("../heavy/HeavyEditor");
+const HeavyEditor = dynamic(loadEditor, {
+  ssr: false,
+  loading: () => <div className="skeleton h-32 w-full" />,
 });
 
-function Dashboard() {
-  const [show, setShow] = useState(false);
-  return show
-    ? <Chart />
-    : <button onClick={() => setShow(true)}>Show chart</button>;
-}
+// …
+<button onMouseEnter={() => void loadEditor()}  // start early on intent
+        onClick={() => setOpen(true)}>Open editor</button>
+{open && <HeavyEditor />}
+
+<img src={src} loading="lazy" … />   // below the fold: fetch near viewport
 ```
 
-<div v-click class="small mt-4">Plain React: <code>React.lazy(() =&gt; import("./Chart"))</code> + <code>&lt;Suspense&gt;</code></div>
+<div v-click class="not-for mt-2 small"><b>Not for:</b> above-the-fold or always-used components; tiny modules.</div>
 
 <!--
-Do less (up front). Every KB of JS has to be downloaded, parsed, compiled, executed: that's main-thread time before the page is interactive.
-Server Components already ship zero JS; lazy loading is for the client components you do need, eventually.
--->
-
----
-
-# Demo: lazy loading
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="lazy" :n="4" />
-  <div class="small mt-6 muted">Eager import vs dynamic import on demand.</div>
-</div>
-<div class="not-for">
-
-**When not to**
-
-- Above-the-fold or always-used components
-- Tiny components: the extra request costs more
-- Fix the lag: preload on hover / intent
-
-</div>
-</div>
-
-<!--
-DEMO CUE: open DevTools Network tab, filter JS. Load the page: naive downloads the heavy chunk immediately. Instant only downloads when you click.
-Mention: preload on hover to hide the delay of the lazy chunk itself.
+Do less, up front. Every KB of JS is downloaded, parsed, compiled, executed: main-thread time before interactive.
+Hover preloading hides the lazy chunk's own delay.
+DEMO CUE: "Reload both", compare JavaScript and Image bytes before touching anything. In Instant, click "Open editor": JavaScript jumps as the chunk loads. Scroll down: images load as they approach the viewport. Dev bundles are bigger than prod; the difference is what matters.
 -->
 
 ---
 
 # Image optimization
 
+<DemoLink slug="images" :n="5" corner />
+
 **Problem:** images are usually the LCP element *and* the biggest bytes.
 
-```tsx {2|3|4|5|all}
-<Image
-  src={hero}                 // static import → width/height known: no CLS
-  sizes="(max-width: 768px) 100vw, 50vw"  // right size per viewport
+```tsx {1|2|3|4|all}
+<Image src={hero}            // static import → known size: no CLS
+  sizes="100vw"              // srcset: right size per viewport
   preload                    // LCP image: fetch it first
   placeholder="blur"         // something to look at immediately
-  alt="Hero"
-/>
-// Below the fold: lazy by default. Served as AVIF/WebP.
+  alt="Hero" />
+
+{gallery.map((photo, i) =>   // lazy by default, WebP/AVIF
+  <Image key={i} src={photo} sizes="50vw" placeholder="blur" alt="" />)}
 ```
 
-<!--
-Right size, right format, right priority.
-In Next 16, `priority` is deprecated in favor of `preload` (or fetchPriority="high").
-Everything below the fold is loading="lazy" by default.
--->
-
----
-
-# Demo: image optimization
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="images" :n="5" />
-  <div class="small mt-6 muted">Raw &lt;img&gt; vs sized, prioritized, modern-format images.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- Don't preload more than the 1–2 LCP images
-- Never lazy-load the LCP image
-- Optimization costs CPU: cache it or use a CDN loader
-
-</div>
-</div>
+<div v-click class="not-for mt-2 small"><b>Watch out:</b> preload only the 1–2 LCP images; never lazy-load the LCP image.</div>
 
 <!--
-DEMO CUE: Network tab, sort by size. Naive downloads the multi-MB originals; instant serves a fraction.
-Watch for layout shift on naive as images pop in without dimensions.
+Right size, right format, right priority. In Next 16 `priority` is deprecated in favor of `preload`.
+DEMO CUE (Chrome, for the LCP/CLS readouts): "Reload both". Both frames get the same simulated ~40 Mbps connection. Naive: ~15 MB of PNGs, the heading jumps down as images arrive (CLS), the hero fights the gallery for bandwidth (slow LCP). Instant: a few hundred KB, blur placeholders hold space, nothing moves. Right-click an Instant image → Open in new tab: a resized WebP, not the 2400px original.
 -->
 
 ---
 
 # Prefetch & preload
 
-**Start the work before the click.**
+<DemoLink slug="prefetch" :n="6" corner />
 
-```tsx {1-2|4-8|10-12|all}
-// Next <Link>: prefetches the route when it enters the viewport (prod)
-<Link href="/products/42">Widget</Link>
+```tsx {1-2|4-5|7-12|all}
+// Default: prefetches the route's App Shell when visible (prod)
+<Link href={`/products/${id}`}>{name}</Link>
 
-// Prefetch on intent: hover / focus ≈ 100–300ms head start
-<Link href="/products/42" prefetch={false}
-  onMouseEnter={() => router.prefetch("/products/42")}>
-  Widget
-</Link>
+// Also prefetch this link's cached data (prod)
+<Link href={`/products/${id}`} prefetch>{name}</Link>
 
-// React 19 resource hints from any component
-preconnect("https://api.example.com");
-preload("/fonts/inter.woff2", { as: "font" });
+// On intent: route + data into a client cache (works in dev)
+function onIntent() {
+  router.prefetch(href);
+  primeProduct(id);   // fetch(`/api/prefetch/product/${id}`)
+}
+<Link href={href} onMouseEnter={onIntent} onFocus={onIntent}>…</Link>
 ```
+
+<div v-click class="small mt-2">No framework? <code>&lt;script type="speculationrules"&gt;</code> prerenders plain <code>&lt;a&gt;</code> links on hover (Chromium).</div>
 
 <!--
 Do it earlier. The gap between hover and click is often 200ms+: free time.
-Viewport prefetch for a few links; intent prefetch for long lists. React 19's preload/preconnect/prefetchDNS let any component emit hints.
--->
-
----
-
-# Demo: prefetch & preload
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="prefetch" :n="6" />
-  <div class="small mt-6 muted">No prefetch vs viewport/intent prefetch.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- Wasted bandwidth/server load on links nobody clicks
-- Prefetching per-user data that goes stale
-- Respect `Save-Data` / slow connections
-
-</div>
-</div>
-
-<!--
-DEMO CUE: prefetching only happens in production. Run `pnpm build && pnpm start` before the talk for this one.
-Hover a link on the instant side, then click: page appears immediately. Naive side waits full latency.
+DEMO CUE: click a product in each frame; the big timer badge shows click → product visible. Naive (prefetch={false}): nothing happens for a full round trip. Instant: switches immediately with a skeleton. Hover a "Hover prefetch" link, wait for "data cached", then click: 0ms (works in dev).
+Next doesn't prefetch in dev: run `pnpm build && pnpm start` for the first two groups. Optional: /frame/prefetch/mpa for Speculation Rules (Chrome; DevTools → Application → Speculative loads).
+Watch out: wasted bandwidth on links nobody clicks; respect Save-Data.
 -->
 
 ---
@@ -573,238 +480,170 @@ layout: section
 
 # 3 · Cache everything
 
-<div class="muted">Client · Server · HTTP · Service worker</div>
-
-<!--
-The fastest request is the one you don't make.
--->
-
----
-
-# Caches all the way down
-
-```mermaid {scale: 0.85}
+```mermaid {scale: 0.6}
 flowchart LR
-  UI[Component] --> MEM[Client cache<br/>memory]
-  MEM --> SW[Service worker<br/>Cache API]
-  SW --> HTTP[Browser<br/>HTTP cache]
+  UI[Component] --> MEM[Client cache]
+  MEM --> SW[Service worker]
+  SW --> HTTP[HTTP cache]
   HTTP --> CDN[CDN]
-  CDN --> SRV[Server cache<br/>use cache]
+  CDN --> SRV[Server cache]
   SRV --> DB[(Database)]
 ```
 
-<v-click>
-
-Each layer you hit **closer to the left** saves a round trip. We'll demo four of them.
-
-</v-click>
-
 <!--
-Every arrow is latency. Each cache layer short-circuits everything to its right.
-We'll go left to right in importance for UX: client, then server, then HTTP, then service worker.
+The fastest request is the one you don't make. Each layer short-circuits everything to its right. We'll demo four: client, server, HTTP, service worker.
 -->
 
 ---
 
 # Client cache: stale-while-revalidate
 
-```tsx {1-5|7-8|all}
-const { data, isFetching } = useQuery({
-  queryKey: ["products"],
-  queryFn: fetchProducts,
-  staleTime: 30_000,     // fresh for 30s: no refetch at all
-});
+<DemoLink slug="caching/client" :n="7" corner />
 
-// Navigate away and back → cached data renders immediately,
-// then refetches in the background if stale.
+<div class="grid grid-cols-2 gap-6 code-sm">
+<div>
+<div class="label-bad">Naive: useEffect + fetch</div>
+
+```tsx
+function useFetch<T>(url: string | null) {
+  const [state, setState] = useState(null);
+  useEffect(() => {
+    if (!url) return;
+    let cancelled = false;
+    getJson<T>(url).then((data) =>
+      !cancelled && setState({ url, data }));
+    return () => { cancelled = true; };
+  }, [url]);
+  return state?.url === url ? state.data : undefined;
+}
 ```
 
-<div v-click class="mt-6">
+</div>
+<div v-click>
+<div class="label-good">Instant: TanStack Query</div>
 
-**Show cached data now. Fix it up when the network answers.**
+```tsx
+const productsQuery = (category: string) =>
+  queryOptions({
+    queryKey: ["products", category],
+    queryFn: () => getJson(productsUrl(category)),
+  });
+
+const list = useQuery({ ...productsQuery(category), staleTime });
+
+// Prefetch on hover
+onHoverCategory={(c) =>
+  queryClient.prefetchQuery(productsQuery(c))}
+```
 
 </div>
+</div>
+
+<div v-click class="not-for mt-4 small"><b>Not for:</b> data where stale is dangerous (balances, checkout stock). Invalidate after mutations.</div>
 
 <!--
-TanStack Query v5 (or SWR). The cache is keyed by queryKey; revisiting a screen renders from cache synchronously, no spinner.
-isFetching lets you show a subtle "updating" indicator instead of a skeleton. Can persist to localStorage for instant cold starts.
--->
-
----
-
-# Demo: client cache (SWR)
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="caching/client" :n="7" />
-  <div class="small mt-6 muted">useEffect + fetch vs TanStack Query cache.</div>
-</div>
-<div class="not-for">
-
-**When not to**
-
-- Data where stale is dangerous (balances, inventory at checkout)
-- Highly personalized data on shared devices
-- Remember: invalidate after mutations
-
-</div>
-</div>
-
-<!--
-DEMO CUE: latency 2000ms. Switch between tabs/products a few times. Naive shows a spinner every time; instant is immediate after the first visit, with a background "refreshing" hint.
+Show cached data now, fix it up when the network answers. The cache is persisted to localStorage, so even a full reload is instant.
+DEMO CUE: latency 2000ms. Click through categories and products on both sides, then go back to one you've seen: naive spins every time, cached is ~16ms with "refreshing…". Hover a category on the right before clicking: even first visits are instant. Reload the page: "page load → data" is near-instant (persisted). Set staleTime to 10s: no refetch at all. "Clear cache" resets.
 -->
 
 ---
 
 # Server cache: `use cache` + tags
 
-```ts {1-6|8-13|all}
-async function getProducts() {
+<DemoLink slug="caching/server" :n="8" corner />
+
+<div class="code-md">
+
+```ts {1-7|9-13|15-19|all}
+async function getInventory() {
   "use cache";
-  cacheTag("products");     // label this entry
-  cacheLife("days");
-  return db.products.findMany();   // slow query runs once
+  cacheTag("products");
+  cacheLife("hours");
+  const items = await readInventory();   // slow query runs once
+  return { items, computedAt: new Date().toLocaleTimeString() };
 }
 
-async function updatePrice(id: string, price: number) {
-  "use server";
-  await db.products.update(id, { price });
-  updateTag("products");    // purge exactly what changed
+export async function sellWithUpdateTag() {   // "use server"
+  sellOne(1);
+  updateTag("products");   // read-your-own-writes: wait for fresh data
+}
+
+export async function sellWithRevalidateTag() {
+  sellOne(1);
+  revalidateTag("products", "max");  // SWR: next visitor gets stale value now
 }
 ```
 
-<!--
-Compute once, invalidate precisely. "use cache" works on functions and components, not just pages.
-updateTag in a Server Action gives read-your-own-writes: the user sees the change immediately. revalidateTag(tag, "max") elsewhere for stale-while-revalidate semantics.
--->
-
----
-
-# Demo: server cache
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="caching/server" :n="8" />
-  <div class="small mt-6 muted">Uncached query per request vs tagged cache + precise invalidation.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- Never cache per-user data under a shared key
-- Forgetting to tag = stale forever
-- Cache stampede when a hot entry expires
-
-</div>
 </div>
 
 <!--
-DEMO CUE: latency 2000ms. Reload a few times: naive is 2s every time, instant is 2s once then immediate.
-Then edit an item: instant invalidates the tag and shows fresh data right away.
+Compute once, invalidate precisely. updateTag only works in Server Actions.
+DEMO CUE: "Reload both" a few times: naive shows a skeleton for the full latency every time; cached is instant and "Computed at" doesn't change.
+Click "Sell 1 keyboard → updateTag": waits for fresh data, shows new stock. Click "Sell 1 keyboard → revalidateTag("max")": returns instantly; "Reload this frame" shows OLD stock (compare "Database right now"); reload again after the latency: fresh.
+Watch out: never cache per-user data under a shared key; forget a tag = stale forever.
 -->
 
 ---
 
 # HTTP cache
 
-```ts {1-3|5-9|all}
-// Browser caches it, CDN shares it, nobody re-asks for 60s
-return Response.json(data, {
-  headers: {
-    "Cache-Control":
-      "public, max-age=60, stale-while-revalidate=600",
-  },
-});
+<DemoLink slug="caching/http" :n="9" corner />
 
-// Fingerprinted assets (app.3f9a.js): cache forever
-// Cache-Control: public, max-age=31536000, immutable
+```ts {4|5|6-8|all}
+// app/api/caching/http/max-age/route.ts
+export async function GET() {
+  await connection();
+  await delay();
+  return Response.json(payload("max-age"), {
+    headers: {
+      "Cache-Control": "public, max-age=10, stale-while-revalidate=60",
+    },
+  });
+}
 ```
 
-<v-click>
+<v-clicks>
 
-`max-age`: fresh, zero requests · `stale-while-revalidate`: serve stale, refresh in background · `ETag`: cheap 304 check
+- `max-age=10`: fresh for 10s, **zero requests**
+- `stale-while-revalidate=60`: serve stale instantly, refresh in background
+- `ETag`: still a round trip, but a cheap **304** with no body
 
-</v-click>
-
-<!--
-The oldest cache and still the best. Zero JavaScript. Works for every client.
-max-age = no request at all. SWR = respond instantly from cache while refetching. ETag/If-None-Match = still a round trip but no body.
--->
-
----
-
-# Demo: HTTP cache
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="caching/http" :n="9" />
-  <div class="small mt-6 muted"><code>no-store</code> vs <code>max-age</code> + <code>stale-while-revalidate</code>.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- You can't purge a browser cache: keep max-age short for HTML/APIs
-- `public` on per-user responses leaks data via CDNs
-- Use `private` or `Vary` correctly
-
-</div>
-</div>
+</v-clicks>
 
 <!--
-DEMO CUE: Network tab open, "Disable cache" OFF. Fetch repeatedly: naive hits the server every time (full latency), instant shows "(disk cache)" / "(memory cache)" with 0ms.
+The oldest cache and still the best. Zero JavaScript. CDNs honor s-maxage the same way, shared across users.
+DEMO CUE: DevTools "Disable cache" must be OFF. Click each button a few times: no-store pays full latency every time; max-age is ~0ms after the first click and the server counter stops moving. Wait 10s, click max-age: still instant, but the counter goes up (background refresh). ETag panel: round trip, 304, slow work skipped.
+Watch out: you can't purge a browser cache; never `public` on per-user responses.
 -->
 
 ---
 
 # Service worker cache
 
-A programmable proxy that lives in the browser.
+<DemoLink slug="caching/sw" :n="10" corner />
 
-```js {1-2|3-11|all}
-// sw.js
-self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches.open("v1").then(async (cache) => {
-      const cached = await cache.match(event.request);
-      const network = fetch(event.request).then((res) => {
-        cache.put(event.request, res.clone());
-        return res;
-      });
-      return cached ?? network;   // stale-while-revalidate, offline-capable
-    })
-  );
-});
+```js {1-3|4-11|12-15|all}
+async function staleWhileRevalidate(event) {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(event.request);
+  const network = fetch(event.request).then(async (res) => {
+    if (res.ok) await cache.put(event.request, res.clone());
+    return res;
+  });
+
+  if (cached) {
+    event.waitUntil(network.catch(() => {})); // offline? keep cached copy
+    return cached;
+  }
+  return network;
+}
 ```
 
-<!--
-Do it elsewhere: in a separate thread that intercepts every request from the page.
-Cache-first for the app shell = instant repeat loads and offline support. This is what makes a PWA work.
--->
-
----
-
-# Demo: service worker cache
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="caching/sw" :n="10" />
-  <div class="small mt-6 muted">Network-only vs service-worker-cached. Try going offline.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- Updates: users can be stuck on an old version
-- Debugging is hard (DevTools → Application → Service Workers)
-- Consider Workbox / Serwist instead of hand-rolling
-
-</div>
-</div>
+<div v-click class="not-for mt-2 small"><b>Watch out:</b> updates (users stuck on old versions), hard to debug. Consider Workbox / Serwist.</div>
 
 <!--
-DEMO CUE: load once, then DevTools → Network → Offline. Reload: naive breaks, instant still works from the SW cache.
-Remember to turn offline back OFF afterward!
+A programmable proxy in the browser, on its own thread. Registered with scope /caching/sw and only touches two path prefixes.
+DEMO CUE (needs real Chrome; embedded webviews may refuse SW registration): click "Register SW". If "Controls this page" says no, do a normal reload. Click both GET buttons twice: SW panel misses the first time, then ~0ms. DevTools → Network → Offline, click both again: network-only fails, SW panel still shows data. Turn Offline back OFF, then "Unregister + clear cache".
 -->
 
 ---
@@ -823,122 +662,101 @@ Everything so far was about reads. Now writes. This is where apps like Linear fe
 
 # Optimistic UI
 
-```mermaid {scale: 0.8}
+```mermaid {scale: 0.7}
 sequenceDiagram
   participant U as User
   participant UI
   participant S as Server
-  U->>UI: click "Like"
-  UI-->>U: filled heart, immediately
-  UI->>S: POST /like
+  U->>UI: click "Add"
+  UI-->>U: shown immediately (pending)
+  UI->>S: server action
   alt success
-    S-->>UI: 200: keep it
+    S-->>UI: commit real data
   else failure
-    S-->>UI: 500: roll back, show error
+    S-->>UI: roll back, show error
   end
 ```
 
 <!--
-Hide the wait. Assume success, because 99% of writes do succeed, show it now, reconcile when the server answers.
-The important part is the failure path: roll back and tell the user.
+Hide the wait. Assume success, because most writes succeed, show it now, reconcile when the server answers. The important part is the failure path.
 -->
 
 ---
 
 # Optimistic UI: `useOptimistic`
 
-```tsx {1-4|6-11|13|all}
-const [optimisticTodos, addOptimistic] = useOptimistic(
-  todos,
-  (state, newTodo) => [...state, { ...newTodo, pending: true }],
-);
+<DemoLink slug="optimistic" :n="11" corner />
 
-async function add(formData: FormData) {
-  const todo = { id: crypto.randomUUID(), text: formData.get("text") };
-  addOptimistic(todo);        // shows now
-  await addTodo(todo);        // server action; may throw
-  // when the action settles, optimistic state is discarded → real state
+```tsx {1-2|4-12|all}
+const [todos, setTodos] = useState<TodoView[]>(initial);
+const [optimisticTodos, addOptimistic] = useOptimistic(todos, applyOptimistic);
+
+function handleAdd(text: string) {
+  startTransition(async () => {
+    const temp = { id: `temp-${crypto.randomUUID()}`, text, pending: true };
+    addOptimistic({ type: "add", todo: temp });
+    const res = await addTodoAction(text);
+    if (res.ok) startTransition(() => setTodos((ts) => [...ts, res.value]));
+    else setError(`Rolled back: ${res.error}`);   // optimistic state just drops
+  });
 }
-
-return <form action={add}>…{optimisticTodos.map(renderTodo)}</form>;
 ```
 
-<!--
-React 19's useOptimistic: optimistic state lives only for the duration of the transition/action. When it ends, React falls back to the real state, so rollback on error is automatic.
-TanStack Query has the same pattern with onMutate/onError.
--->
-
----
-
-# Demo: optimistic UI
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="optimistic" :n="11" />
-  <div class="small mt-6 muted">Wait-for-server vs useOptimistic with rollback.</div>
-</div>
-<div class="not-for">
-
-**When not to**
-
-- Payments, irreversible or high-stakes actions
-- Writes that fail often (validation-heavy)
-- Server-generated values the UI depends on
-
-</div>
-</div>
+<div v-click class="not-for mt-4 small"><b>Not for:</b> payments, irreversible actions, writes that fail often.</div>
 
 <!--
-DEMO CUE: latency 2000ms. Add a todo on each side: naive waits 2s, instant is immediate (timing badge ~0ms).
-Then turn ON "Fail 50% of writes" and add several: watch the instant side roll back and show an error. Turn it OFF afterward.
+Optimistic state lives only while the transition runs. On success we commit real data; on failure React drops the optimistic state: automatic rollback.
+DEMO CUE: latency 2000ms. Add a todo on each side: left spins 2s, right is instant (faded = pending). Rapid-fire toggle checkboxes: left locks up after every click. Turn ON "Fail 50% of writes", add a few on the right: failed ones vanish with an error. Turn it OFF.
 -->
 
 ---
 
 # Local-first
 
-**Flip it:** the local database is the source of truth. The network is a sync detail.
+<DemoLink slug="local-first" :n="12" corner />
 
-```tsx {1-4|6-8|10|all}
-const db = new Dexie("app");
-db.version(1).stores({ todos: "id, done, createdAt" });
+<div class="grid grid-cols-2 gap-6 code-sm">
+<div>
+<div class="label-good">Reads & writes: local, ~1ms</div>
 
-// Reads: a live query over IndexedDB. Re-renders on change.
+```ts
+db.version(1).stores({
+  todos: "id, createdAt, dirty", meta: "key" });
+
 const todos = useLiveQuery(() =>
-  db.todos.orderBy("createdAt").toArray());
+  db.todos.orderBy("createdAt")
+    .filter((t) => !t.deleted).toArray());
 
-// Writes: local, ~1ms. Sync to the server in the background.
-await db.todos.add({ id, text, done: false, createdAt: Date.now() });
+await db.todos.add({ id, text, done: false,
+  updatedAt: Date.now(), dirty: 1 }); // outbox
 ```
 
-<!--
-Optimistic UI is a patch over a server-first model. Local-first removes the server from the critical path for both reads AND writes.
-Works offline, survives reload, every interaction is local speed.
--->
-
----
-
-# Demo: local-first
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="local-first" :n="12" />
-  <div class="small mt-6 muted">Server round trip per action vs IndexedDB + background sync.</div>
 </div>
-<div class="not-for">
+<div v-click>
+<div class="label-good">Sync: in the background</div>
 
-**The hard parts**
-
-- Initial load: how much data do you sync down?
-- Conflicts, auth, permissions, schema migrations
-- That's why sync engines exist →
+```ts
+export async function syncOnce() {
+  const outbox = await db.todos
+    .where("dirty").equals(1).toArray();
+  const since = (await db.meta.get("version"))?.value ?? 0;
+  const res = await lfFetch("/api/local-first/sync", {
+    method: "POST",
+    body: JSON.stringify({ changes: outbox, since }),
+  });
+  // mark pushed rows clean; apply remote changes
+  // (last-write-wins by updatedAt)
+}
+```
 
 </div>
 </div>
+
+<div v-click class="not-for mt-4 small"><b>Hard parts:</b> initial sync size, conflicts, auth, migrations. That's why sync engines exist.</div>
 
 <!--
-DEMO CUE: latency 2000ms. Add/toggle items: instant side is immediate. Reload the page: data is still there instantly (from IndexedDB).
-Go offline (DevTools), keep editing, come back online: it syncs.
+The local database (IndexedDB via Dexie) is the source of truth. dirty: 1 rows ARE the outbox. Sync runs on mount, every 3s, and on reconnect.
+DEMO CUE: latency 2000ms. Add/toggle on both sides: left waits, right is instant. Turn on "Simulate offline": left breaks, right keeps working and the outbox count climbs. Turn offline off: outbox drains; "Reload from server" on the left shows the synced changes. Hard-reload: right renders from IndexedDB immediately.
 -->
 
 ---
@@ -948,27 +766,28 @@ Go offline (DevTools), keep editing, come back online: it syncs.
 ```mermaid {scale: 0.75}
 flowchart LR
   subgraph Client
-    UI[UI] -->|mutate| Q[Mutation queue]
-    Q -->|apply optimistically| L[(Local store)]
-    L -->|live query| UI
+    UI[UI] -->|mutate| Q[Pending queue]
+    Q -->|replay on top| V[View]
+    C[(Confirmed state)] --> V
+    V --> UI
   end
   subgraph Server
-    P[Push endpoint] --> LOG[(Ordered log<br/>authoritative)]
+    P[Push endpoint] --> LOG[(Ordered log + version)]
   end
   Q -->|push| P
-  LOG -->|poke / pull| L
+  LOG -->|poke via SSE| C
 ```
 
 <v-clicks>
 
 1. Mutations apply locally **and** go into a queue
-2. Server applies them in order → authoritative **log**
-3. Clients pull new log entries, **rebase** pending local mutations on top
+2. Server applies them in order → authoritative version
+3. Clients get poked, **rebase** pending mutations on top
 
 </v-clicks>
 
 <!--
-This is the architecture behind Linear, Figma, Replicache, Zero.
+The architecture behind Linear, Figma, Replicache, Zero.
 Rebase is the key idea: like git. Take the server state, re-apply my unconfirmed mutations on top. If the server rejected one, it simply disappears.
 -->
 
@@ -976,105 +795,86 @@ Rebase is the key idea: like git. Take the server state, re-apply my unconfirmed
 
 # Rebase, by hand
 
-```ts {1-5|7-14|all}
-type Mutation = { id: string; name: "addTodo" | "toggle"; args: unknown };
+<DemoLink slug="sync/hand-rolled" :n="13" corner />
 
-let confirmed: State;          // last state from the server
-let pending: Mutation[] = [];  // sent, not yet acknowledged
-const view = () => pending.reduce(apply, confirmed);
-
-// Server pushed new state (includes all mutations it accepted)
-function onServerUpdate(state: State, lastAckedId: string) {
-  confirmed = state;
-  pending = pending.slice(
-    pending.findIndex((m) => m.id === lastAckedId) + 1,
-  );
-  render(view());   // my unacked edits stay on top
+```ts {1-6|8-14|16|all}
+/** 1) apply locally (instant)  2) queue  3) push in the background. */
+mutate(m: Mutation) {
+  const pm = { ...m, clientId: this.clientId, seq: ++this.seq };
+  this.pending.push(pm);
+  void this.flush();
 }
+
+/** The server says "this is the truth at version N". Rebase on top of it. */
+private onPoke(poke: Poke) {
+  this.confirmed = poke.todos;
+  const last = poke.lastSeq[this.clientId] ?? 0;
+  this.pending = this.pending.filter((m) => m.seq > last); // drop confirmed/rejected
+  this.emit();
+}
+
+todos: this.pending.reduce(applyMutation, this.confirmed), // ← the rebase
 ```
 
 <!--
-The whole trick in ~15 lines. The view is always "server truth + my pending mutations replayed".
-Server-side, the mutator is authoritative: it can reject, or produce a different result, and clients converge.
--->
-
----
-
-# Demo: hand-rolled sync engine
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="sync/hand-rolled" :n="13" />
-  <div class="small mt-6 muted">Mutation queue + server log + push. Open two windows.</div>
-</div>
-<div class="not-for">
-
-**Why not hand-roll in prod**
-
-- Partial sync, permissions, reconnection
-- Schema changes, garbage-collecting the log
-- Months of edge cases
-
-</div>
-</div>
-
-<!--
-DEMO CUE: open the demo in TWO browser windows side by side. Latency 1000ms.
-Add/toggle in window A: immediate locally, appears in window B after push. Show the pending queue draining.
-Turn ON fail writes: rejected mutations vanish on rebase. Turn it OFF afterward.
+applyMutation is a pure function both sides run: client to predict, server to decide.
+DEMO CUE: open the page in a SECOND Chrome window, side by side. Works best with low latency and few tabs open (SSE uses one connection per tab). Toggle on the right panel: instant here, appears in the other window when the server confirms. Watch the polling panel lag (data age climbs). Latency 2000ms, click quickly: mutations stack up as pending, confirm in order in the sync log. Turn ON "Fail 50% of writes": rejected mutations roll back everywhere (✗ in the log). Turn it OFF.
+Why not hand-roll in prod: partial sync, permissions, reconnection, log GC.
 -->
 
 ---
 
 # Production sync: Zero
 
-```ts {1-6|8-12|14-16|all}
-// Queries run against the local replica: instant, reactive
-const [issues] = useQuery(
-  z.query.issue
-    .where("status", "open")
-    .related("assignee")
-    .orderBy("modified", "desc"),
-);
+<DemoLink slug="sync/zero" :n="14" corner />
 
-// Mutators run on client (optimistic) AND server (authoritative)
-const mutators = defineMutators({
-  issue: { close: defineMutator(({ tx, args }) =>
-    tx.mutate.issue.update({ id: args.id, status: "closed" })) },
+<div class="grid grid-cols-2 gap-6 code-sm">
+<div>
+<div class="label-good">Queries: run on the local replica</div>
+
+```ts
+export const queries = defineQueries({
+  todos: {
+    list: defineQuery(validator(isFilter),
+      ({ args: { filter } }) => {
+        let q = zql.todo.orderBy("created_at", "asc");
+        if (filter !== "all")
+          q = q.where("done", filter === "done");
+        return q;
+      }),
+  },
 });
 
-// zero-cache replicates Postgres → clients (logical replication)
-// Only the rows your queries need are synced
+const [todos] = useQuery(queries.todos.list({ filter }));
 ```
 
-<!--
-Rocicorp Zero: Postgres is the source of truth, zero-cache sits in between, clients hold a partial replica.
-Queries are written once and run both locally (instant) and on the server (for sync). Permissions enforced server-side.
--->
-
----
-
-# Demo: Zero
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="sync/zero" :n="14" />
-  <div class="small mt-6 muted">Postgres + zero-cache. Two windows, zero spinners.</div>
 </div>
-<div class="not-for">
+<div v-click>
+<div class="label-good">Mutators: run on client AND server</div>
 
-**Tradeoffs**
+```ts
+export const mutators = defineMutators({
+  todo: {
+    toggle: defineMutator(validator(isToggle),
+      async ({ tx, args }) => {
+        await tx.mutate.todo.update(
+          { id: args.id, done: args.done });
+      }),
+    // add, remove …
+  },
+});
 
-- Another service to run (zero-cache)
-- Postgres-only, logical replication required
-- Data model must fit "partial replica" thinking
+zero.mutate(mutators.todo.toggle({ id, done }))
+  .server.then((r) => r.type === "error" && rollbackMsg(r));
+```
 
 </div>
 </div>
 
 <!--
-DEMO CUE: requires Docker: `pnpm zero:up` and `pnpm zero:cache` running BEFORE the talk (see README).
-Two windows. Edit in one: instant locally, appears in the other in milliseconds. Bump the latency slider: local UI is unaffected.
+Rocicorp Zero: Postgres is the source of truth, zero-cache replicates to clients' local replicas. The SAME mutator runs in the browser (same frame) and on our /api/zero/mutate endpoint against Postgres. If the server run fails, Zero rolls back.
+DEMO CUE: needs `pnpm zero:up` and `pnpm zero:cache` started before the talk (~25s to be ready). Latency 2000ms: add/toggle in both panels; Zero updates in ~1 frame, "awaiting server…" shows Postgres catching up. Click All / Open / Done: Zero filters instantly, fetch waits. Toggle in Zero: the second client updates live. Fail 50% of writes ON: rejected writes roll back. Optional: stop zero-cache, status pill flips, local reads still work.
+Tradeoffs: another service to run, Postgres + logical replication required.
 -->
 
 ---
@@ -1092,8 +892,8 @@ Two windows. Edit in one: instant locally, appears in the other in milliseconds.
 | **Yjs / Automerge** | Peers | CRDTs | Collaborative text, offline merge |
 
 <!--
-Two broad families: server-authoritative with rebase (Zero, Replicache, Convex, Instant) vs CRDTs (Yjs, Automerge) which merge without a central authority, great for collaborative documents.
-Pick based on: where your data lives today, and whether you need offline multi-writer merges.
+Two families: server-authoritative with rebase (Zero, Replicache, Convex, Instant) vs CRDTs (Yjs, Automerge) that merge without a central authority, great for collaborative documents.
+Pick based on where your data lives today and whether you need offline multi-writer merges.
 -->
 
 ---
@@ -1124,7 +924,7 @@ Pick based on: where your data lives today, and whether you need offline multi-w
 </div>
 
 <!--
-Sync engines are the biggest lever in this talk but also the biggest commitment. Optimistic UI gets you 80% for simple forms.
+Sync engines are the biggest lever in this talk and the biggest commitment. Optimistic UI gets you most of the way for simple forms.
 -->
 
 ---
@@ -1143,279 +943,208 @@ INP territory. One main thread runs your JS, layout, paint, and input handling. 
 
 # Memoization
 
-**Problem:** a parent re-render re-runs every expensive child.
+<DemoLink slug="memo" :n="15" corner />
 
-```tsx {1-3|5-7|9-10|all}
-// Skip recomputing when inputs haven't changed
-const sorted = useMemo(() => sortBig(rows, sortKey), [rows, sortKey]);
-const onSelect = useCallback((id) => setSelected(id), []);
+<div class="grid grid-cols-2 gap-6 code-sm">
+<div>
+<div class="label-good">Manual: all three pieces required</div>
 
-// Skip re-rendering when props haven't changed
-const Row = memo(function Row({ row, onSelect }) { … });
+```tsx
+const MemoSlowList = memo(SlowList);
 
-// Or: React Compiler does all of the above automatically
-// next.config.ts → reactCompiler: true
+export function ManualPanel() {
+  "use no memo";   // compiler opted out
+  // …
+  const items = useMemo(() => sortItems(ITEMS, sort), [sort]);
+  const onSelect = useCallback((id) => setSelectedId(id), []);
+  return <MemoSlowList items={items}
+    selectedId={selectedId} onSelect={onSelect} />;
+}
 ```
 
-<!--
-Do less: skip work you've already done.
-The React Compiler (1.0) auto-memoizes components and values. This repo has it on, so the "naive" demo opts out with "use no memo".
--->
-
----
-
-# Demo: memoization
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="memo" :n="15" />
-  <div class="small mt-6 muted">Re-render everything vs memoized / compiled.</div>
 </div>
-<div class="not-for">
+<div v-click>
+<div class="label-good">React Compiler: plain code</div>
 
-**Watch out for**
-
-- Memo has a cost: compare + memory
-- Unstable props (inline objects) defeat it
-- Profile first: React DevTools → "Highlight updates"
+```tsx
+// reactCompiler: true in next.config.ts
+export function CompilerPanel() {
+  // …
+  const items = sortItems(ITEMS, sort);
+  const onSelect = (id) => setSelectedId(id);
+  return <SlowList items={items}
+    selectedId={selectedId} onSelect={onSelect} />;
+}
+// Naive = this exact code + "use no memo"
+```
 
 </div>
 </div>
+
+<div v-click class="not-for mt-4 small"><b>Remember:</b> memo skips work; it doesn't make work faster. Profile first.</div>
 
 <!--
-DEMO CUE: type in the input. Watch the render counters: naive re-renders every row on each keystroke; instant re-renders only what changed.
+Do less: skip work you've already done. The compiler caches items, onSelect and the SlowList element automatically.
+DEMO CUE: type quickly in the Naive input: characters lag, SlowList's render counter climbs every keystroke. Type in Manual and Compiler: parent counter climbs, SlowList's stays put. Click Sort or a row in any panel: all three are equally slow, because SlowList must re-render.
 -->
 
 ---
 
 # Transitions
 
-**Problem:** an expensive update blocks typing.
+<DemoLink slug="transitions" :n="16" corner />
 
-```tsx {1-6|8-11|all}
-// Urgent: the input. Non-urgent: the filtered list.
-const [isPending, startTransition] = useTransition();
-function onChange(e) {
-  setQuery(e.target.value);                         // urgent
-  startTransition(() => setFilter(e.target.value)); // interruptible
+```tsx {2|3|8-10|all}
+export function DeferredSearch() {
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
+  const isStale = query !== deferredQuery;
+  return (
+    <>
+      <SearchInput value={query} onChange={setQuery} />   {/* urgent */}
+      <div className={isStale ? "opacity-50" : ""}>
+        <SlowResults query={deferredQuery} />            {/* interruptible */}
+      </div>
+    </>
+  );
 }
-
-// Or: defer a value you don't own
-const deferredQuery = useDeferredValue(query);
-const results = <SlowList query={deferredQuery} />;
-// stale UI while rendering; new keystroke abandons the old render
 ```
 
-<!--
-Hide the wait / keep responsive. Transitions let React interrupt a slow render when new input arrives.
-The input stays at 60fps; the list catches up. isPending lets you dim the stale content.
-Note: this only helps with React rendering work, not with a single long synchronous computation.
--->
-
----
-
-# Demo: transitions
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="transitions" :n="16" />
-  <div class="small mt-6 muted">Blocking update vs useTransition / useDeferredValue.</div>
-</div>
-<div class="not-for">
-
-**Not a fix for**
-
-- Slow non-React code (one long loop) → workers
-- Too many DOM nodes → virtualization
-- Controlled inputs: never put input state in a transition
-
-</div>
-</div>
+<div v-click class="not-for mt-2 small"><b>Not a fix for:</b> one long synchronous loop (→ workers) or too many DOM nodes (→ virtualization).</div>
 
 <!--
-DEMO CUE: type quickly in both inputs. Naive input stutters and drops characters; instant input stays smooth while the list lags slightly behind.
-Optional: DevTools CPU throttling 4x to exaggerate.
+React paints the keystroke first, then renders the list in the background, yielding to new keystrokes and discarding stale renders. useTransition/startTransition is the same idea when you own the setState.
+Deferring only helps if the list can skip re-rendering for an unchanged value: the compiler memoizes SlowResults here.
+DEMO CUE: type "swift otter" quickly in the Naive box: letters appear in bursts, input latency 200ms+. Same in Instant: every letter immediate, list dims while catching up. Hold Backspace in each and watch the frame graph.
 -->
 
 ---
 
 # Virtualization
 
-<div class="grid grid-cols-2 gap-10">
-<div>
+<DemoLink slug="virtualization" :n="17" corner />
 
-```tsx {1-5|7-12|all}
-const v = useVirtualizer({
-  count: 10_000,
+<div class="grid grid-cols-[3fr_2fr] gap-10">
+<div class="code-md">
+
+```tsx {1-6|8-13|all}
+const virtualizer = useVirtualizer({
+  count: rows.length,
   getScrollElement: () => ref.current,
-  estimateSize: () => 36,
+  estimateSize: () => ROW_HEIGHT,
+  overscan: 5,
 });
 
-<div style={{ height: v.getTotalSize() }}>
-  {v.getVirtualItems().map((item) => (
-    <Row key={item.key} index={item.index}
-      style={{ transform: `translateY(${item.start}px)` }} />
-  ))}
+<div ref={ref} className="h-96 overflow-y-auto">
+  <div style={{ height: virtualizer.getTotalSize() }}>
+    {virtualizer.getVirtualItems().map((item) =>
+      <RowView key={item.key} … />)}
+  </div>
 </div>
 ```
 
 </div>
 <div v-click>
 
-**10,000 rows → ~20 DOM nodes**
+**~80,000 DOM nodes → ~150**
 
-Render only what's on screen, plus a small overscan.
+Render only what's on screen, plus overscan. Cost is constant, whatever the row count.
 
-<div class="small muted mt-4"><code>@tanstack/react-virtual</code>, or CSS <code>content-visibility: auto</code> for simpler cases</div>
-
-</div>
-</div>
-
-<!--
-Do less: fewer DOM nodes means faster render, layout, memory.
-The virtualizer computes which rows are visible from scroll position and absolutely positions just those.
--->
-
----
-
-# Demo: virtualization
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="virtualization" :n="17" />
-  <div class="small mt-6 muted">Render 10k rows vs virtualized list.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- Ctrl+F can't find off-screen rows
-- Accessibility & SEO: content isn't in the DOM
-- Variable heights need measuring
+<div class="not-for small mt-6"><b>Watch out:</b> Ctrl+F, a11y and SEO can't see off-screen rows. Variable heights need measuring.</div>
 
 </div>
 </div>
 
 <!--
-DEMO CUE: watch the initial render time and the DOM node count. Scroll fast: naive janks, instant stays smooth. Open Elements panel to show how few rows exist.
+Do less: fewer DOM nodes = faster render, layout, memory. Note "use no memo" in the real file: useVirtualizer returns a mutable object the compiler can't track.
+DEMO CUE: click "Mount list" on the left: spinner freezes while ~80,000 DOM nodes are created; note the mount time. "Mount list" on the right: a few ms, ~150 nodes. Scroll both; the right's node count stays flat. Switch to 50,000 rows and repeat.
 -->
 
 ---
 
 # Web workers
 
-**Problem:** a 500ms computation freezes everything. INP fails.
+<DemoLink slug="workers" :n="18" corner />
 
-```ts {1-6|8-12|all}
-// worker.ts: runs on another thread
-self.onmessage = (e: MessageEvent<number[]>) => {
-  const result = heavyCompute(e.data);   // blocks *this* thread only
-  self.postMessage(result);
+<div class="grid grid-cols-2 gap-6 code-sm">
+<div>
+<div class="label-good">primes.worker.ts: another thread</div>
+
+```ts
+self.onmessage = (e: MessageEvent<number>) => {
+  const limit = e.data;
+  const start = performance.now();
+  const count = countPrimes(limit);  // blocks
+  self.postMessage({                 // this thread only
+    limit, count,
+    ms: Math.round(performance.now() - start),
+  });
 };
-
-// component
-const worker = useMemo(
-  () => new Worker(new URL("./worker.ts", import.meta.url)), []);
-worker.onmessage = (e) => setResult(e.data);
-worker.postMessage(data);              // UI stays responsive
 ```
 
-<!--
-Do it elsewhere. Parsing, image processing, search indexing, diffing big data: none of it needs the DOM.
-Comlink makes the message-passing feel like async function calls.
--->
-
----
-
-# Demo: web workers
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="workers" :n="18" />
-  <div class="small mt-6 muted">Main-thread compute vs worker. Watch the spinner.</div>
 </div>
-<div class="not-for">
+<div v-click>
+<div class="label-good">Component: post and stay free</div>
 
-**Watch out for**
+```tsx
+useEffect(() => {
+  const w = new Worker(
+    new URL("./primes.worker.ts", import.meta.url),
+    { type: "module" });
+  w.onmessage = (e) => { setResult(e.data); setBusy(false); };
+  worker.current = w;
+  return () => w.terminate();
+}, []);
 
-- Data is copied (structured clone): big payloads cost
-- No DOM access
-- Overkill for &lt;50ms tasks
+function run() {
+  setBusy(true);
+  worker.current?.postMessage(limit);
+}
+```
 
 </div>
 </div>
 
-<!--
-DEMO CUE: click "Compute" on each side and try typing / watch the animation. Naive: animation freezes, input dead. Instant: everything stays smooth.
--->
-
----
-layout: section
----
-
-# 6 · Feel faster
-
-<div class="muted">View transitions</div>
+<div v-click class="not-for mt-4 small"><b>Watch out:</b> data is copied (structured clone), no DOM access, overkill for &lt;50ms tasks.</div>
 
 <!--
-Last technique is about perception: making change feel connected instead of jarring.
+Do it elsewhere. Parsing, image processing, search indexing: none of it needs the DOM. Comlink makes it feel like async calls.
+DEMO CUE: click "Count primes" on the left, then immediately try typing or clicking +1: spinner and FPS freeze, then everything lands at once. Same on the right: spinner keeps spinning at 60fps, you can type the whole time. Compare durations: the worker isn't faster, it just isn't in the way.
 -->
 
 ---
 
-# View transitions
+# 6 · Feel faster: view transitions
 
-```tsx {1|3-8|10-12|all}
-import { ViewTransition } from "react";
+<DemoLink slug="view-transitions" :n="19" corner />
 
-// List page
-<Link href={`/products/${p.id}`}>
-  <ViewTransition name={`product-${p.id}`}>
-    <Image src={p.image} alt={p.name} />
-  </ViewTransition>
-</Link>
+```tsx {1|3-7|9-13|all}
+const select = (id: string | null) => startTransition(() => setSelectedId(id));
 
-// Detail page: same name → the browser morphs one into the other
-<ViewTransition name={`product-${p.id}`}>
-  <Image src={p.image} alt={p.name} />
+// Grid: each thumbnail gets a unique name
+<ViewTransition name={`vt-card-${c.id}`} share="vt-morph" default="none">
+  <div><Thumb card={c} /></div>
 </ViewTransition>
+
+// Detail: same name → the browser morphs one into the other
+<ViewTransition name={`vt-card-${card.id}`} share="vt-morph" default="none">
+  <div><Thumb card={card} size="lg" /></div>
+</ViewTransition>
+<ViewTransition enter="vt-slide-up" exit="vt-slide-down">…</ViewTransition>
 ```
 
-<div v-click class="small mt-4">Activates on transitions: <code>startTransition</code>, <code>&lt;Link&gt;</code> navigations, Suspense reveals.</div>
+<div v-click class="not-for mt-2 small"><b>Watch out:</b> keep it 150–300ms, respect <code>prefers-reduced-motion</code>. Animation decorates a fast page; it doesn't fix a slow one.</div>
 
 <!--
-Hide the wait / continuity. The View Transitions API snapshots old and new states and animates between them on the compositor.
-React's <ViewTransition> wires it to transitions. A shared element morph makes navigation feel like one continuous thing, not a page swap.
--->
-
----
-
-# Demo: view transitions
-
-<div class="grid grid-cols-2 gap-10 mt-6">
-<div>
-  <DemoLink slug="view-transitions" :n="19" />
-  <div class="small mt-6 muted">Hard cut vs animated continuity.</div>
-</div>
-<div class="not-for">
-
-**Watch out for**
-
-- Keep it short: 150–300ms
-- Respect `prefers-reduced-motion`
-- Animation doesn't fix a slow page: it decorates a fast one
-
-</div>
-</div>
-
-<!--
-DEMO CUE: click a product on each side. Naive: instant hard cut. Instant: the image morphs into place.
-Ask the audience which one "felt" faster. Usually the animated one, even though it's technically the same speed.
+Perception: continuity. React's <ViewTransition> activates on transitions (startTransition, Link navigations, Suspense reveals) and drives the browser's View Transitions API.
+DEMO CUE: click a card on the left, then the same card on the right. Both instant; only the right shows where the card went. Filter and reverse both lists: left pops, right slides. Click a card in the page navigation strip: morphs into the next page's hero, facts slide in when loaded (raise latency to see the skeleton). Ask the audience which "felt" faster.
 -->
 
 ---
 
 # Bottleneck → technique
+
+<div class="compact-table">
 
 | If the bottleneck is… | Reach for |
 | --- | --- |
@@ -1428,8 +1157,10 @@ Ask the audience which one "felt" faster. Usually the animated one, even though 
 | Janky interactions | Transitions, memo, virtualization, workers |
 | Abrupt changes | Skeletons, view transitions |
 
+</div>
+
 <!--
-Print this slide. Diagnose first, then pick the matching technique. Applying them all blindly just adds complexity.
+Diagnose first, then pick the matching technique. Applying them all blindly just adds complexity.
 -->
 
 ---
@@ -1472,7 +1203,7 @@ class: text-center
 
 <div v-click class="mt-10 text-2xl">
 
-The best UI isn't fast. It's **instant**: the user never waits on you.
+The goal isn't fast. It's **instant**: the user never waits on you.
 
 </div>
 
@@ -1486,7 +1217,7 @@ Recap the four moves. Every one of the 19 demos was one or two of these.
 
 - **Demos & slides:** [github.com/coryhouse/instant-ui](https://github.com/coryhouse/instant-ui)
 - Next.js Cache Components, PPR, streaming: [nextjs.org/docs](https://nextjs.org/docs)
-- React: [react.dev](https://react.dev) (useOptimistic, useTransition, ViewTransition)
+- React: [react.dev](https://react.dev) (useOptimistic, useDeferredValue, ViewTransition)
 - Core Web Vitals: [web.dev/vitals](https://web.dev/vitals)
 - TanStack Query & Virtual: [tanstack.com](https://tanstack.com)
 - Local-first: [localfirstweb.dev](https://localfirstweb.dev) · Zero: [zero.rocicorp.dev](https://zero.rocicorp.dev)

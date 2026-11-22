@@ -70,3 +70,44 @@ html.dark {
   border-left: 4px solid var(--iu-warning);
   padding-left: 1rem;
 }
+
+/* Smaller code for side-by-side naive/instant snippets */
+.code-sm .slidev-code {
+  --slidev-code-font-size: 0.74rem;
+  --slidev-code-line-height: 1.45;
+  font-size: 0.74rem !important;
+}
+/* Wrap long lines (with a hanging indent) instead of cutting them off in narrow columns */
+.code-sm .slidev-code code {
+  white-space: pre-wrap;
+}
+.code-sm .slidev-code .line {
+  display: inline-block;
+  padding-left: 2ch;
+  text-indent: -2ch;
+}
+.code-md .slidev-code {
+  font-size: 0.9rem !important;
+}
+.label-bad, .label-good {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+.label-bad { color: var(--iu-danger); }
+.label-good { color: var(--iu-success); }
+.not-for {
+  font-size: 1.05rem;
+}
+.footer-note {
+  position: absolute;
+  bottom: 1.75rem;
+  left: 3.5rem;
+  right: 3.5rem;
+}
+
+/* Denser tables (e.g. the closing decision matrix) */
+.compact-table table { font-size: 1.15rem; }
+.compact-table th, .compact-table td { padding-top: 0.35rem; padding-bottom: 0.35rem; }

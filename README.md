@@ -21,28 +21,33 @@ pnpm --dir slides i   # once: install the slide deck
 pnpm slides       # slides at http://localhost:3030
 ```
 
-The slides are a standalone package in `slides/` with their own lockfile:
+The slides are a standalone package in `slides/` with their own lockfile. Root scripts wrap it:
 
 ```bash
-pnpm --dir slides i        # once
-pnpm --dir slides dev      # http://localhost:3030
-pnpm --dir slides build    # static build in slides/dist
-pnpm --dir slides export   # PDF (see note below)
+pnpm slides           # = pnpm --dir slides dev     → http://localhost:3030
+pnpm slides:build     # = pnpm --dir slides build   → slides/dist
+pnpm slides:export    # = pnpm --dir slides export  → slides/instant-ui.pdf
 ```
 
 > PDF export uses `playwright-chromium`. If it asks for a browser, run `pnpm --dir slides exec playwright install chromium` once.
 
 ### Zero demo (#14)
 
-<!-- TODO(lead): confirm exact commands with the Zero demo setup -->
+Only this demo needs Docker. Start it all **before** the talk:
 
 ```bash
-pnpm zero:up       # start Postgres in Docker (TODO: confirm)
-pnpm zero:cache    # start zero-cache (TODO: confirm)
-pnpm dev
+docker pull postgres:16.2-alpine   # once, while you have good wifi
+pnpm zero:up       # Postgres 16 in Docker on port 5434 (waits until healthy)
+pnpm dev           # terminal 1: the app on :3000
+pnpm zero:cache    # terminal 2: zero-cache (takes ~25s to become ready)
 ```
 
-Start these before the talk. The other 18 demos don't need Docker.
+When you're done:
+
+```bash
+pnpm zero:down     # stop Postgres (keeps data)
+pnpm zero:reset    # stop Postgres, delete its volume and the local zero-cache replica
+```
 
 ## Demos
 
@@ -72,10 +77,12 @@ The order and copy come from [`src/lib/demos.ts`](src/lib/demos.ts).
 
 ## Presenting tips
 
+- **Present from Chrome**, not an embedded webview (like an editor's preview pane). The images demo's LCP/CLS readouts and the service worker demo need a real browser; webviews may refuse service worker registration.
 - **Latency slider** (header): simulated server delay, default 1000ms. Crank it to 2000ms to make differences obvious on a projector.
 - **Fail 50% of writes** toggle: use it in the optimistic UI and sync demos to show rollback. Turn it off afterward.
 - **Reload both**: page-load demos use side-by-side iframes (`FrameCompare`). Click "Reload both" to restart them at the same moment and compare the timing badges.
 - **Two windows** for the sync demos (#13, #14): put two browser windows side by side to show changes propagating.
+- **Hand-rolled sync (#13)** works best with low latency and few open tabs: it uses Server-Sent Events, one connection per tab, and browsers cap connections per origin.
 - **Production build for real numbers**: dev mode renders on demand and doesn't prefetch. For static rendering, PPR, and prefetching, run:
 
   ```bash
@@ -102,5 +109,6 @@ src/
 slides/                Slidev deck (standalone package)
   slides.md            the deck
   components/          DemoLink, DemoFrame
-public/                static assets (images, service worker)
+public/                static assets (demo images, sw-demo.js service worker)
+zero/, docker-compose.yml  Postgres + zero-cache config for the Zero demo
 ```
