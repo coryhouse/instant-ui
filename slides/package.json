@@ -1,0 +1,19 @@
+{
+  "name": "instant-ui-slides",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "slidev --port 3030",
+    "build": "slidev build",
+    "export": "slidev export --output instant-ui.pdf"
+  },
+  "dependencies": {
+    "@slidev/cli": "^53.1.0",
+    "@slidev/theme-default": "^0.25.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "playwright-chromium": "^1.65.1"
+  },
+  "packageManager": "pnpm@9.5.0"
+}

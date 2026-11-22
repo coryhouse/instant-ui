@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "slides": "pnpm --dir slides dev",
+    "slides:build": "pnpm --dir slides build",
+    "slides:export": "pnpm --dir slides export"
   },
   "dependencies": {
     "@rocicorp/zero": "^1.12.0",
